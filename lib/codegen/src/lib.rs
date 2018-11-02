@@ -2,7 +2,7 @@
 
 #![deny(missing_docs, trivial_numeric_casts, unused_extern_crates)]
 #![warn(unused_import_braces)]
-#![cfg_attr(feature = "std", deny(unstable_features))]
+#![cfg_attr(all(feature = "std", not(feature = "nightly")), deny(unstable_features))]
 #![cfg_attr(
     feature = "clippy",
     plugin(clippy(conf_file = "../../clippy.toml"))
@@ -48,6 +48,7 @@
 #![cfg_attr(not(feature = "std"), feature(alloc))]
 // TODO: Remove this workaround once https://github.com/rust-lang/rust/issues/27747 is done.
 #![cfg_attr(not(feature = "std"), feature(slice_concat_ext))]
+#![cfg_attr(feature = "nightly", feature(test))]
 
 #[cfg(not(feature = "std"))]
 #[macro_use]

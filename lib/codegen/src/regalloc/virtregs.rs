@@ -395,6 +395,29 @@ impl VirtRegs {
     }
 }
 
+#[cfg(all(test, feature = "nightly"))]
+mod benches {
+    extern crate test;
+    use self::test::Bencher;
+    use super::*;
+    use ir::Value;
+
+    #[bench]
+    fn bench_find(b: &mut Bencher) {
+        let mut vregs = VirtRegs::new();
+        let v1 = Value::new(1);
+        let v2 = Value::new(2);
+        let v3 = Value::new(3);
+        let v4 = Value::new(4);
+
+        b.iter(|| {
+            vregs.union(v2, v4);
+            vregs.union(v3, v1);
+            vregs.finish_union_find(None);
+        });
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
