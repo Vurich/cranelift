@@ -50,6 +50,9 @@ pub struct VirtRegs {
     /// Table used during the union-find phase while `vregs` is empty.
     union_find: SecondaryMap<Value, i32>,
 
+    /// Cached allocation for `fn find` (so most calls to `find` don't need to allocate at all)
+    find_allocation: Vec<Value>,
+
     /// Values that have been activated in the `union_find` table, but not yet added to any virtual
     /// registers by the `finish_union_find()` function.
     pending_values: Vec<Value>,
@@ -64,6 +67,7 @@ impl VirtRegs {
             unused_vregs: Vec::new(),
             value_vregs: SecondaryMap::new(),
             union_find: SecondaryMap::new(),
+            find_allocation: vec![],
             pending_values: Vec::new(),
         }
     }
@@ -291,18 +295,22 @@ impl UFEntry {
 impl VirtRegs {
     /// Find the leader value and rank of the set containing `v`.
     /// Compress the path if needed.
-    fn find(&mut self, val: Value) -> (Value, u32) {
-        match UFEntry::decode(self.union_find[val]) {
-            UFEntry::Rank(rank) => (val, rank),
-            UFEntry::Link(parent) => {
-                // TODO: This recursion would be more efficient as an iteration that pushes
-                // elements onto a SmallVector.
-                let found = self.find(parent);
-                // Compress the path if needed.
-                if found.0 != parent {
-                    self.union_find[val] = UFEntry::encode_link(found.0);
+    fn find(&mut self, mut val: Value) -> (Value, u32) {
+        let path_elements = &mut self.find_allocation;
+
+        loop {
+            match UFEntry::decode(self.union_find[val]) {
+                UFEntry::Rank(rank) => {
+                    for el in path_elements.drain(..) {
+                        self.union_find[el] = UFEntry::encode_link(val);
+                    }
+
+                    break (val, rank);
                 }
-                found
+                UFEntry::Link(parent) => {
+                    path_elements.push(val);
+                    val = parent;
+                }
             }
         }
     }
